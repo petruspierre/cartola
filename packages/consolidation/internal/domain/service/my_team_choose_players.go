@@ -6,21 +6,20 @@ import (
 	"github.com/petruspierre/cartola-consolidation/internal/domain/entity"
 )
 
-func ChoosePlayers(myTeam entity.MyTeam, players []entity.Player) error {
+var errNotEnoughMoney = errors.New("not enough money")
+
+func ChoosePlayers(myTeam *entity.MyTeam, myPlayers []entity.Player, players []entity.Player) error {
 	totalCost := 0.0
-	totalEarned := 0.0
+	totalEarned := calculateTotalEarned(myPlayers, players)
 
 	for _, player := range players {
-		if playerInMyTeam(player, myTeam) && !playerInPlayersList(player, &players) {
-			totalEarned += player.Price
-		}
-		if !playerInMyTeam(player, myTeam) && playerInPlayersList(player, &players) {
+		if !playerInMyTeam(player, *myTeam) && playerInPlayersList(player, players) {
 			totalCost += player.Price
 		}
 	}
 
 	if totalCost > myTeam.Score+totalEarned {
-		return errors.New("You don't have enough money to buy these players")
+		return errNotEnoughMoney
 	}
 
 	myTeam.Score += totalEarned - totalCost
@@ -29,24 +28,34 @@ func ChoosePlayers(myTeam entity.MyTeam, players []entity.Player) error {
 	for _, player := range players {
 		myTeam.Players = append(myTeam.Players, player.ID)
 	}
-
 	return nil
 }
 
 func playerInMyTeam(player entity.Player, myTeam entity.MyTeam) bool {
-	for _, playerID := range myTeam.Players {
-		if player.ID == playerID {
+	for _, p := range myTeam.Players {
+		if p == player.ID {
 			return true
 		}
 	}
 	return false
 }
 
-func playerInPlayersList(player entity.Player, players *[]entity.Player) bool {
-	for _, p := range *players {
-		if player.ID == p.ID {
+func playerInPlayersList(player entity.Player, players []entity.Player) bool {
+	for _, p := range players {
+		if p.ID == player.ID {
 			return true
 		}
 	}
 	return false
+}
+
+// get the difference between two slices
+func calculateTotalEarned(myPlayers []entity.Player, players []entity.Player) float64 {
+	var totalEarned float64
+	for _, myPlayer := range myPlayers {
+		if !playerInPlayersList(myPlayer, players) {
+			totalEarned += myPlayer.Price
+		}
+	}
+	return totalEarned
 }
