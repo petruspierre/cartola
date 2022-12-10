@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/petruspierre/cartola-consolidation/internal/infra/db"
+	httphandler "github.com/petruspierre/cartola-consolidation/internal/infra/http"
 	"github.com/petruspierre/cartola-consolidation/internal/infra/repository"
 	"github.com/petruspierre/cartola-consolidation/pkg/uow"
 
@@ -28,7 +30,14 @@ func main() {
 	}
 	registerRepositories(uow)
 
-	if err = http.ListenAndServe(":8080", nil); err != nil {
+	r := chi.NewRouter()
+	r.Get("/players", httphandler.ListPlayersHandler(ctx, *db.New(dtb)))
+	r.Get("/my-teams/{teamID}/players", httphandler.ListMyTeamPlayersHandler(ctx, *db.New(dtb)))
+	r.Get("/my-teams/{teamID}/balance", httphandler.GetMyTeamBalanceHandler(ctx, *db.New(dtb)))
+	r.Get("/matches", httphandler.ListMatchesHandler(ctx, repository.NewMatchRepository(dtb)))
+	r.Get("/matches/{matchID}", httphandler.ListMatchByIDHandler(ctx, repository.NewMatchRepository(dtb)))
+
+	if err = http.ListenAndServe(":8080", r); err != nil {
 		panic(err)
 	}
 }
